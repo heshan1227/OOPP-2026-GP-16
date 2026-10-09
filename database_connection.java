@@ -7,7 +7,7 @@ import java.sql.SQLException;
 public class DBConnection {
     private static final String URL = "jdbc:mysql://localhost:3306/fams_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC";
     private static final String USER = "root";
-    private static final String PASSWORD = ""; // Default XAMPP / MySQL root password
+    private static final String PASSWORD = "123";
 
     private static boolean useMemoryFallback = false;
 
@@ -19,7 +19,7 @@ public class DBConnection {
             return conn;
         } catch (ClassNotFoundException | SQLException e) {
             useMemoryFallback = true;
-            return null; // Signals memory fallback mode
+            return null;
         }
     }
 
