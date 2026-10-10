@@ -34,3 +34,20 @@ public class AttendanceDAO {
                         }
                     }
                 }
+// Insert
+                String insertSql = "INSERT INTO attendance_records (student_reg_no, student_name, course_code, component_type, session_number, session_date, is_present) VALUES (?, ?, ?, ?, ?, ?, ?)";
+                try (PreparedStatement iStmt = conn.prepareStatement(insertSql)) {
+                    iStmt.setString(1, record.getStudentRegNo());
+                    iStmt.setString(2, record.getStudentName());
+                    iStmt.setString(3, record.getCourseCode());
+                    iStmt.setString(4, record.getComponentType().name());
+                    iStmt.setInt(5, record.getSessionNumber());
+                    iStmt.setDate(6, Date.valueOf(record.getSessionDate()));
+                    iStmt.setBoolean(7, record.isPresent());
+                    iStmt.executeUpdate();
+                    return;
+                }
+            }
+        } catch (SQLException e) {
+            // Fallback
+        }
