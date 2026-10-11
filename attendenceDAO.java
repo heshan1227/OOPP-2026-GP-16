@@ -95,3 +95,50 @@ public class AttendanceDAO {
         } catch (SQLException e) {
             // Fallback
         }
+
+             DatabaseInitializer.initializeSampleData();
+        for (AttendanceRecord r : DatabaseInitializer.ATTENDANCE_RECORDS) {
+            if (r.getStudentRegNo().equalsIgnoreCase(regNo) && r.getCourseCode().equalsIgnoreCase(courseCode)) {
+                list.add(r);
+            }
+        }
+        return list;
+    }
+
+    public List<AttendanceRecord> getAllAttendanceRecords() {
+        List<AttendanceRecord> list = new ArrayList<>();
+        try {
+            Connection conn = DBConnection.getConnection();
+            if (conn != null) {
+                String sql = "SELECT * FROM attendance_records ORDER BY course_code, student_reg_no, component_type, session_number";
+                try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
+                    while (rs.next()) {
+                        list.add(extractAttendance(rs));
+                    }
+                    return list;
+                }
+            }
+        } catch (SQLException e) {
+            // Fallback
+        }
+
+        DatabaseInitializer.initializeSampleData();
+        return new ArrayList<>(DatabaseInitializer.ATTENDANCE_RECORDS);
+    }
+
+    private AttendanceRecord extractAttendance(ResultSet rs) throws SQLException {
+        int id = rs.getInt("record_id");
+        String regNo = rs.getString("student_reg_no");
+        String name = rs.getString("student_name");
+        String courseCode = rs.getString("course_code");
+        ComponentType comp = ComponentType.valueOf(rs.getString("component_type"));
+        int sessionNo = rs.getInt("session_number");
+        LocalDate date = rs.getDate("session_date").toLocalDate();
+        boolean isPresent = rs.getBoolean("is_present");
+        boolean hasMed = rs.getBoolean("has_medical_submitted");
+        boolean isMedApproved = rs.getBoolean("is_medical_approved");
+
+        return new AttendanceRecord(id, regNo, name, courseCode, "Course " + courseCode, comp, sessionNo, date, isPresent, hasMed, isMedApproved);
+    }
+}
+
