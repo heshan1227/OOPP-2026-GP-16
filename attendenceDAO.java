@@ -75,3 +75,23 @@ public class AttendanceDAO {
             DatabaseInitializer.ATTENDANCE_RECORDS.add(record);
         }
     }
+        public List<AttendanceRecord> getAttendanceByStudent(String regNo, String courseCode) {
+        List<AttendanceRecord> list = new ArrayList<>();
+        try {
+            Connection conn = DBConnection.getConnection();
+            if (conn != null) {
+                String sql = "SELECT * FROM attendance_records WHERE student_reg_no = ? AND course_code = ? ORDER BY component_type, session_number";
+                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.setString(1, regNo);
+                    stmt.setString(2, courseCode);
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        while (rs.next()) {
+                            list.add(extractAttendance(rs));
+                        }
+                        return list;
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            // Fallback
+        }
