@@ -48,6 +48,30 @@ public class AttendanceDAO {
                     return;
                 }
             }
+            
         } catch (SQLException e) {
             // Fallback
         }
+        
+        // Memory Fallback
+        DatabaseInitializer.initializeSampleData();
+        boolean found = false;
+        for (int i = 0; i < DatabaseInitializer.ATTENDANCE_RECORDS.size(); i++) {
+            AttendanceRecord r = DatabaseInitializer.ATTENDANCE_RECORDS.get(i);
+            if (r.getStudentRegNo().equalsIgnoreCase(record.getStudentRegNo()) &&
+                r.getCourseCode().equalsIgnoreCase(record.getCourseCode()) &&
+                r.getComponentType() == record.getComponentType() &&
+                r.getSessionNumber() == record.getSessionNumber()) {
+                
+                r.setPresent(record.isPresent());
+                r.setSessionDate(record.getSessionDate());
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            record.setRecordId(DatabaseInitializer.ATTENDANCE_RECORDS.size() + 1);
+            DatabaseInitializer.ATTENDANCE_RECORDS.add(record);
+        }
+    }
