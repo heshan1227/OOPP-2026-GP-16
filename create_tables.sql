@@ -89,7 +89,3 @@ CREATE TABLE IF NOT EXISTS timetables (
     batch VARCHAR(50) NOT NULL,
     academic_period VARCHAR(100) NOT NULL DEFAULT 'Semester 1 - 2026'
 );
-
--- Seed Initial Admin User
-INSERT IGNORE INTO users (user_id, username, password, full_name, email, phone, department, role)
-VALUES ('ADM001', 'admin', 'admin123', 'System Administrator', 'admin@fot.ruh.ac.lk', '0412223344', 'Faculty of Technology', 'ADMIN');
