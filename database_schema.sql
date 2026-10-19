@@ -46,6 +46,24 @@ CREATE TABLE IF NOT EXISTS attendance_records (
     FOREIGN KEY (course_code) REFERENCES courses(course_code) ON DELETE CASCADE
 );
 
+-- 4. Medical Records Table
+CREATE TABLE IF NOT EXISTS medical_records (
+    medical_id INT AUTO_INCREMENT PRIMARY KEY,
+    student_reg_no VARCHAR(50) NOT NULL,
+    student_name VARCHAR(100) NOT NULL,
+    course_code VARCHAR(20) NOT NULL,
+    component_type VARCHAR(20) NOT NULL,
+    session_number INT NOT NULL,
+    absent_date DATE NOT NULL,
+    reference_no VARCHAR(50) NOT NULL,
+    reason TEXT NOT NULL,
+    submission_date DATE NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING', -- PENDING, APPROVED, REJECTED
+    reviewed_by VARCHAR(100),
+    image_path VARCHAR(255),
+    FOREIGN KEY (student_reg_no) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
 
 
 -- 5. Notices Table
