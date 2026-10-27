@@ -71,7 +71,8 @@ public class MainFrame extends JFrame {
         userInfoLabel.setFont(Theme.FONT_SUBHEADER);
         userInfoLabel.setForeground(Color.WHITE);
 
-        JButton btnLogout = Theme.createSecondaryButton("Switch Role / Logout");
+        JButton btnLogout = Theme.createSecondaryButton("Logout");
+        btnLogout.setForeground(Color.RED);
         btnLogout.setFont(Theme.FONT_SMALL);
         btnLogout.addActionListener(e -> logout());
 

@@ -98,44 +98,15 @@ public class LoginFrame extends JFrame {
         formCard.add(txtPassword, gbc);
 
         gbc.gridy++;
-        JButton btnLogin = Theme.createPrimaryButton("Login to System");
+        JButton btnLogin = Theme.createPrimaryButton("Login");
+        btnLogin.setBackground(Color.BLUE);
+        btnLogin.setForeground(Color.WHITE);
         btnLogin.addActionListener(e -> performLogin());
         formCard.add(btnLogin, gbc);
-
-        // Quick Role Login Shortcuts for Evaluation Demo
-        gbc.gridy++;
-        formCard.add(new JSeparator(), gbc);
-
-        gbc.gridy++;
-        JLabel quickLabel = new JLabel("Quick Evaluation Role Selector:", SwingConstants.CENTER);
-        quickLabel.setFont(Theme.FONT_SMALL);
-        quickLabel.setForeground(Theme.TEXT_MUTED);
-        formCard.add(quickLabel, gbc);
 
         gbc.gridy++;
         JPanel quickBtnGrid = new JPanel(new GridLayout(2, 2, 8, 8));
         quickBtnGrid.setBackground(Color.WHITE);
-
-        JButton btnAdmin = Theme.createSecondaryButton("Admin (Ilukkumbura)");
-        btnAdmin.setFont(Theme.FONT_SMALL);
-        btnAdmin.addActionListener(e -> setQuickLogin("admin", "admin123"));
-
-        JButton btnLecturer = Theme.createSecondaryButton("Lecturer (Dr. Samara)");
-        btnLecturer.setFont(Theme.FONT_SMALL);
-        btnLecturer.addActionListener(e -> setQuickLogin("dr_samarasinghe", "lec123"));
-
-        JButton btnTO = Theme.createSecondaryButton("Tech Officer (Chamikara)");
-        btnTO.setFont(Theme.FONT_SMALL);
-        btnTO.addActionListener(e -> setQuickLogin("to_chamikara", "to123"));
-
-        JButton btnStudent = Theme.createSecondaryButton("Undergrad (Kasun)");
-        btnStudent.setFont(Theme.FONT_SMALL);
-        btnStudent.addActionListener(e -> setQuickLogin("student1", "student123"));
-
-        quickBtnGrid.add(btnAdmin);
-        quickBtnGrid.add(btnLecturer);
-        quickBtnGrid.add(btnTO);
-        quickBtnGrid.add(btnStudent);
 
         formCard.add(quickBtnGrid, gbc);
 
@@ -145,13 +116,6 @@ public class LoginFrame extends JFrame {
         centerWrapper.add(formCard);
 
         mainPanel.add(centerWrapper, BorderLayout.CENTER);
-
-//        // Footer
-//        JLabel footerLabel = new JLabel("ICT2132 Mini Project | Group B16 - Member 04 (C H G Chamikara)", SwingConstants.CENTER);
-//        footerLabel.setFont(Theme.FONT_SMALL);
-//        footerLabel.setForeground(Theme.TEXT_MUTED);
-//        footerLabel.setBorder(new EmptyBorder(10, 10, 15, 10));
-//        mainPanel.add(footerLabel, BorderLayout.SOUTH);
 
         add(mainPanel);
     }

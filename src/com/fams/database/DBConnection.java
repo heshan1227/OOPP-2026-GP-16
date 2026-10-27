@@ -7,7 +7,7 @@ import java.sql.SQLException;
 public class DBConnection {
     private static final String URL = setting("FAMS_DB_URL", "jdbc:mysql://localhost:3306/fams_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC");
     private static final String USER = setting("FAMS_DB_USER", "root");
-    private static final String PASSWORD = setting("FAMS_DB_PASSWORD", "");
+    private static final String PASSWORD = setting("FAMS_DB_PASSWORD", "1234");
 
     private static String setting(String key, String fallback) {
         String value = System.getenv(key);
