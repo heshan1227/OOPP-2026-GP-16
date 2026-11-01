@@ -96,7 +96,7 @@ public class ProfilePanel extends JPanel {
         avatarSection.add(btnUploadPhoto);
 
         avatarSection.add(Box.createVerticalStrut(8));
-        JButton btnResetPhoto = new JButton("Reset Default");
+        JButton btnResetPhoto = Theme.styleButton(new JButton("Reset Default"));
         btnResetPhoto.setFont(Theme.FONT_SMALL);
         btnResetPhoto.setFocusPainted(false);
         btnResetPhoto.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -149,7 +149,7 @@ public class ProfilePanel extends JPanel {
         JPanel picInputPanel = new JPanel(new BorderLayout(6, 0));
         picInputPanel.setOpaque(false);
         picInputPanel.add(txtPicturePath, BorderLayout.CENTER);
-        JButton btnBrowse = new JButton("...");
+        JButton btnBrowse = Theme.styleButton(new JButton("..."));
         btnBrowse.setToolTipText("Browse image file");
         btnBrowse.addActionListener(e -> chooseAndUploadPhoto());
         picInputPanel.add(btnBrowse, BorderLayout.EAST);

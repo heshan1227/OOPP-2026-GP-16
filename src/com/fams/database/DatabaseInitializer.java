@@ -97,7 +97,7 @@ public class DatabaseInitializer {
         // Scenario 4: UG 4 (Dilshan) -> >80% Attendance WITH medicals (13/15 Theory, 12/15 Practical = 25/30 = 83.3%, 2 approved medicals)
         seedStudentAttendance("TG/2024/2104", "Dilshan Madushanka", "ICT2132", 13, 12, true, true);
 
-        // Scenario 5: UG 5 (Kusal) -> <80% Attendance WITH medicals (10/15 Theory, 9/15 Practical = 19/30 = 63.3%, 4 medicals [3 Approved, 1 Pending])
+        // Scenario 5: UG 5 (Kusal) -> <80% Attendance WITH medicals (10/15 Theory, 9/15 Practical = 19/30 = 63.3%, 3 Approved medicals (max 3 per subject))
         seedStudentAttendance("TG/2024/2105", "Kusal Mendis", "ICT2132", 10, 9, true, true);
 
         // Seed default 85% attendance for remaining students 6 to 20
@@ -117,7 +117,23 @@ public class DatabaseInitializer {
         MEDICAL_RECORDS.add(new MedicalRecord(medId++, "TG/2024/2105", "Kusal Mendis", "ICT2132", ComponentType.THEORY, 11, LocalDate.now().minusDays(15), "MED/2026/051", "Hospital Admission - Dengue", LocalDate.now().minusDays(10), MedicalStatus.APPROVED, "to_chamikara"));
         MEDICAL_RECORDS.add(new MedicalRecord(medId++, "TG/2024/2105", "Kusal Mendis", "ICT2132", ComponentType.THEORY, 12, LocalDate.now().minusDays(14), "MED/2026/052", "Hospital Admission - Dengue", LocalDate.now().minusDays(10), MedicalStatus.APPROVED, "to_chamikara"));
         MEDICAL_RECORDS.add(new MedicalRecord(medId++, "TG/2024/2105", "Kusal Mendis", "ICT2132", ComponentType.PRACTICAL, 11, LocalDate.now().minusDays(12), "MED/2026/053", "Recovery Rest", LocalDate.now().minusDays(8), MedicalStatus.APPROVED, "to_chamikara"));
-        MEDICAL_RECORDS.add(new MedicalRecord(medId++, "TG/2024/2105", "Kusal Mendis", "ICT2132", ComponentType.PRACTICAL, 12, LocalDate.now().minusDays(2), "MED/2026/054", "Migraine Specialist Note", LocalDate.now().minusDays(1), MedicalStatus.PENDING, null));
+
+        // Pending medical waiting for Technical Officer review (a student can have max 3 medicals per subject)
+        MEDICAL_RECORDS.add(new MedicalRecord(medId++, "TG/2024/2106", "Charith Asalanka", "ICT2132", ComponentType.THEORY, 14, LocalDate.now().minusDays(2), "MED/2026/061", "Migraine Specialist Note", LocalDate.now().minusDays(1), MedicalStatus.PENDING, null));
+
+        // Attendance flags follow the medical status: pending = submitted, approved = submitted + approved
+        for (MedicalRecord m : MEDICAL_RECORDS) {
+            for (AttendanceRecord a : ATTENDANCE_RECORDS) {
+                if (a.getStudentRegNo().equalsIgnoreCase(m.getStudentRegNo())
+                        && a.getCourseCode().equalsIgnoreCase(m.getCourseCode())
+                        && a.getComponentType() == m.getComponentType()
+                        && a.getSessionNumber() == m.getSessionNumber()) {
+                    a.setHasMedicalSubmitted(m.getStatus() != MedicalStatus.REJECTED);
+                    a.setMedicalApproved(m.getStatus() == MedicalStatus.APPROVED);
+                    break;
+                }
+            }
+        }
 
         // 7. Seed Notices (Admin Created)
         int noticeId = 1;
@@ -143,8 +159,8 @@ public class DatabaseInitializer {
         // 15 Theory Sessions
         for (int session = 1; session <= 15; session++) {
             boolean present = (session <= theoryAttendedCount);
-            boolean hasMed = !present && generateMedicalForAbsence;
-            boolean medApp = hasMed && isApprovedMedical;
+            boolean hasMed = false;   // set from the medical records below
+            boolean medApp = false;
 
             ATTENDANCE_RECORDS.add(new AttendanceRecord(
                 recId++, regNo, name, courseCode, "Object Oriented Programming Practicum",
@@ -156,8 +172,8 @@ public class DatabaseInitializer {
         // 15 Practical Sessions
         for (int session = 1; session <= 15; session++) {
             boolean present = (session <= practicalAttendedCount);
-            boolean hasMed = !present && generateMedicalForAbsence;
-            boolean medApp = hasMed && isApprovedMedical;
+            boolean hasMed = false;   // set from the medical records below
+            boolean medApp = false;
 
             ATTENDANCE_RECORDS.add(new AttendanceRecord(
                 recId++, regNo, name, courseCode, "Object Oriented Programming Practicum",

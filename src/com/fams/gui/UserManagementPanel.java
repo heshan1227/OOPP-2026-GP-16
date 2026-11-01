@@ -16,7 +16,7 @@ public class UserManagementPanel extends JPanel {
         super(new BorderLayout(8,8));add(new JLabel("User & Role Management — Administrator"),BorderLayout.NORTH);
         add(new JScrollPane(table),BorderLayout.CENTER);
         JPanel actions=new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JButton add=new JButton("Add User"),edit=new JButton("Edit User"),deactivate=new JButton("Delete User"),refresh=new JButton("Refresh");
+        JButton add=Theme.styleButton(new JButton("Add User")),edit=Theme.styleButton(new JButton("Edit User")),deactivate=Theme.styleButton(new JButton("Delete User")),refresh=Theme.styleButton(new JButton("Refresh"));
         actions.add(add);actions.add(edit);actions.add(deactivate);actions.add(refresh);add(actions,BorderLayout.SOUTH);
         boolean admin=com.fams.service.AuthService.getInstance().getCurrentUser()!=null &&
             com.fams.service.AuthService.getInstance().getCurrentUser().getRole().name().equals("ADMIN");

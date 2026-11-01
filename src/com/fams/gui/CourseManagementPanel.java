@@ -24,8 +24,8 @@ public class CourseManagementPanel extends JPanel {
         add(new JLabel("Course Management"), BorderLayout.NORTH);
         add(new JScrollPane(table), BorderLayout.CENTER);
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JButton add = new JButton("Add"), edit = new JButton("Edit"), delete = new JButton("Delete"), refresh = new JButton("Refresh");
-        JButton materials = new JButton("Course Materials"), enroll = new JButton("Enroll Undergraduate");
+        JButton add = Theme.styleButton(new JButton("Add")), edit = Theme.styleButton(new JButton("Edit")), delete = Theme.styleButton(new JButton("Delete")), refresh = Theme.styleButton(new JButton("Refresh"));
+        JButton materials = Theme.styleButton(new JButton("Course Materials")), enroll = Theme.styleButton(new JButton("Enroll Undergraduate"));
         add.setEnabled(admin); edit.setEnabled(admin); delete.setEnabled(admin);
         actions.add(add); actions.add(edit); actions.add(delete); actions.add(materials); actions.add(enroll); actions.add(refresh); add(actions,BorderLayout.SOUTH);
         materials.addActionListener(e -> manageMaterial());

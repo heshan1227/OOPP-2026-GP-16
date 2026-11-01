@@ -14,12 +14,93 @@ public class StudentPortalPanel extends JPanel {
     private final User user = AuthService.getInstance().getCurrentUser();
     private final JTabbedPane tabs = new JTabbedPane();
     public StudentPortalPanel(){setLayout(new BorderLayout(10,10));setBackground(Theme.LIGHT_BG);setBorder(new EmptyBorder(18,18,18,18));add(Theme.createHeaderLabel("My Undergraduate Portal"),BorderLayout.NORTH);add(tabs,BorderLayout.CENTER);
-        tabs.addTab("Attendance",table("SELECT course_code AS Course, component_type AS Component, session_number AS Session, session_date AS Date, is_present AS Present, has_medical_submitted AS Medical, is_medical_approved AS Approved FROM attendance_records WHERE student_reg_no=? ORDER BY session_date DESC",studentKey()));
-        tabs.addTab("Medicals",table("SELECT course_code AS Course, component_type AS Component, session_number AS Session, absent_date AS Date, reference_no AS Reference, status AS Status, reason AS Reason FROM medical_records WHERE student_reg_no=? ORDER BY absent_date DESC",studentKey()));
-        tabs.addTab("Courses",table("SELECT c.course_code AS Code,c.course_name AS Course,c.theory_credits AS TheoryCredits,c.practical_credits AS PracticalCredits FROM course_enrollments e JOIN courses c ON c.course_code=e.course_code WHERE e.student_user_id=? AND e.active=TRUE",user.getUserId()));
-        tabs.addTab("Marks & Grades",table("SELECT c.course_code AS Course,a.assessment_name AS Assessment,a.assessment_type AS Type,m.mark AS Mark FROM marks m JOIN assessments a ON a.assessment_id=m.assessment_id JOIN courses c ON c.course_code=a.course_code WHERE m.student_user_id=? ORDER BY c.course_code,a.assessment_type",user.getUserId()));
-        tabs.addTab("Timetable",table("SELECT course_code AS Course,component_type AS Component,day_of_week AS Day,start_time AS Starts,end_time AS Ends,venue AS Venue,batch AS Batch FROM timetables WHERE batch=(SELECT batch FROM users WHERE user_id=?) OR department=(SELECT department FROM users WHERE user_id=?) ORDER BY FIELD(day_of_week,'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'),start_time",user.getUserId(),user.getUserId()));
+        tabs.addTab("My Grades & GPA",gradesAndGpaPanel());
     }
+
+    /** Displays final subject grades and the credit-weighted GPA for this undergraduate. */
+    private JPanel gradesAndGpaPanel() {
+        JPanel panel = new JPanel(new BorderLayout(12, 12));
+        panel.setBackground(Theme.LIGHT_BG);
+        panel.setBorder(new EmptyBorder(14, 8, 8, 8));
+
+        JLabel summary = new JLabel("Loading your academic results...");
+        summary.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        summary.setForeground(Theme.PRIMARY_DARK);
+        summary.setBorder(new EmptyBorder(8, 10, 8, 10));
+        panel.add(summary, BorderLayout.NORTH);
+
+        String[] columns = {"Subject", "Grade"};
+        javax.swing.table.DefaultTableModel model = new javax.swing.table.DefaultTableModel(columns, 0) {
+            @Override public boolean isCellEditable(int row, int column) { return false; }
+        };
+        JTable resultTable = new JTable(model);
+        resultTable.setRowHeight(28);
+        resultTable.setFillsViewportHeight(true);
+        resultTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        resultTable.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        panel.add(new JScrollPane(resultTable), BorderLayout.CENTER);
+
+        String sql = "SELECT c.course_code,c.course_name, " +
+                "COALESCE(c.theory_credits,0)+COALESCE(c.practical_credits,0) AS credits, " +
+                "COUNT(DISTINCT a.assessment_id) AS assessment_count, " +
+                "COUNT(DISTINCT CASE WHEN m.mark_id IS NOT NULL THEN a.assessment_id END) AS marked_count, " +
+                "COALESCE(SUM(a.weight_percentage),0) AS total_weight, " +
+                "COALESCE(SUM(CASE WHEN m.mark_id IS NOT NULL THEN a.weight_percentage ELSE 0 END),0) AS marked_weight, " +
+                "COALESCE(SUM(CASE WHEN m.mark_id IS NOT NULL THEN m.mark*a.weight_percentage/100.0 ELSE 0 END),0) AS final_mark " +
+                "FROM course_enrollments e JOIN courses c ON c.course_code=e.course_code " +
+                "LEFT JOIN assessments a ON a.course_code=c.course_code " +
+                "LEFT JOIN marks m ON m.assessment_id=a.assessment_id AND m.student_user_id=e.student_user_id " +
+                "WHERE e.student_user_id=? AND e.active=TRUE " +
+                "GROUP BY c.course_code,c.course_name,c.theory_credits,c.practical_credits " +
+                "ORDER BY c.course_code";
+        double weightedPoints = 0.0;
+        int totalGpaCredits = 0;
+        int completed = 0;
+        int pending = 0;
+        try (Connection con = DBConnection.getConnection()) {
+            if (con == null) {
+                summary.setText("Connect to MySQL to view your grades and GPA.");
+                return panel;
+            }
+            try (PreparedStatement ps = con.prepareStatement(sql)) {
+                ps.setString(1, user.getUserId());
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        int credits = rs.getInt("credits");
+                        double totalWeight = rs.getDouble("total_weight");
+                        double markedWeight = rs.getDouble("marked_weight");
+                        int assessmentCount = rs.getInt("assessment_count");
+                        int markedCount = rs.getInt("marked_count");
+                        boolean complete = assessmentCount > 0 && markedCount == assessmentCount
+                                && totalWeight > 0 && markedWeight >= totalWeight - 0.01;
+                        if (!complete) {
+                            model.addRow(new Object[]{rs.getString("course_name"), "Pending"});
+                            pending++;
+                            continue;
+                        }
+                        double finalMark = rs.getDouble("final_mark");
+                        // Normalize to 100 in case the configured assessment weights do not total exactly 100.
+                        finalMark = finalMark * 100.0 / totalWeight;
+                        finalMark = Math.max(0.0, Math.min(100.0, finalMark));
+                        com.fams.model.GradeResult grade = com.fams.service.GradeCalculator.calculate(finalMark);
+                        model.addRow(new Object[]{rs.getString("course_name"), grade.letterGrade()});
+                        if (credits > 0) {
+                            weightedPoints += grade.gradePoint() * credits;
+                            totalGpaCredits += credits;
+                        }
+                        completed++;
+                    }
+                }
+            }
+            double gpa = totalGpaCredits == 0 ? 0.0 : Math.round(weightedPoints / totalGpaCredits * 100.0) / 100.0;
+            summary.setText(String.format(java.util.Locale.US,
+                    "Your GPA: %.2f", gpa));
+        } catch (Exception ex) {
+            summary.setText("Unable to calculate grades: " + ex.getMessage());
+        }
+        return panel;
+    }
+
     private String studentKey(){return user instanceof UndergraduateUser?((UndergraduateUser)user).getStudentRegNo():user.getUserId();}
     private JScrollPane table(String sql,String... params){String[] headers={"Loading"};DefaultTableModelHolder holder=new DefaultTableModelHolder();JTable t=new JTable(holder.model);t.setFillsViewportHeight(true);try(Connection con=DBConnection.getConnection()){
         if(con==null){holder.model.addColumn("Information");holder.model.addRow(new Object[]{"Connect to MySQL to view your personal records."});}

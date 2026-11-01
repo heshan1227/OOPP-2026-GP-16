@@ -118,9 +118,9 @@ public class NoticePanel extends JPanel {
 
         User currentUser = AuthService.getInstance().getCurrentUser();
         if (currentUser != null && currentUser.getRole() == Role.ADMIN) {
-            JButton btnDelete = new JButton("Delete Notice");
-            btnDelete.setFont(Theme.FONT_SMALL);
-            btnDelete.setForeground(Theme.DANGER);
+            JButton btnDelete = Theme.createDangerButton("Delete Notice");
+            btnDelete.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            btnDelete.setToolTipText("Permanently delete this notice");
             btnDelete.addActionListener(e -> {
                 try {
                     noticeService.deleteNotice(n.getNoticeId());

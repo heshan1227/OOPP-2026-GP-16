@@ -73,7 +73,7 @@ public class CourseListPanel extends JPanel {
         JLabel regBadge = new JLabel(" Student: " + studentReg + " | Semester 1 - 2026 ");
         regBadge.setFont(Theme.FONT_SUBHEADER);
         regBadge.setOpaque(true);
-        regBadge.setBackground(new Color(224, 231, 255));
+        regBadge.setBackground(new Color(245, 232, 236));
         regBadge.setForeground(Theme.PRIMARY_DARK);
         regBadge.setBorder(new EmptyBorder(6, 12, 6, 12));
         headerRow.add(regBadge, BorderLayout.EAST);

@@ -97,9 +97,7 @@ public class LoginFrame extends JFrame {
 
         gbc.gridy++;
         JButton btnLogin = Theme.createPrimaryButton("Login");
-        btnLogin.setBackground(Color.BLUE);
-        btnLogin.setForeground(Color.WHITE);
-        btnLogin.addActionListener(e -> performLogin());
+                btnLogin.addActionListener(e -> performLogin());
         formCard.add(btnLogin, gbc);
 
         gbc.gridy++;

@@ -34,6 +34,7 @@ public class MedicalDAO {
                             record.setMedicalId(rs.getInt(1));
                         }
                     }
+                    syncAttendance(record);
                     return;
                 }
             }
@@ -44,6 +45,7 @@ public class MedicalDAO {
         DatabaseInitializer.initializeSampleData();
         record.setMedicalId(DatabaseInitializer.MEDICAL_RECORDS.size() + 1);
         DatabaseInitializer.MEDICAL_RECORDS.add(record);
+        syncAttendance(record);
     }
 
     public void updateMedicalStatus(int medicalId, MedicalStatus newStatus, String reviewedBy) {
@@ -56,8 +58,10 @@ public class MedicalDAO {
                     stmt.setString(2, reviewedBy);
                     stmt.setInt(3, medicalId);
                     stmt.executeUpdate();
-                    return;
                 }
+                MedicalRecord updated = getMedicalById(medicalId);
+                if (updated != null) syncAttendance(updated);
+                return;
             }
         } catch (SQLException e) {
             // Fallback
@@ -68,6 +72,7 @@ public class MedicalDAO {
             if (r.getMedicalId() == medicalId) {
                 r.setStatus(newStatus);
                 r.setReviewedBy(reviewedBy);
+                syncAttendance(r);
                 break;
             }
         }
@@ -102,6 +107,45 @@ public class MedicalDAO {
             }
         }
         return list;
+    }
+
+    public MedicalRecord getMedicalById(int medicalId) {
+        for (MedicalRecord m : getAllMedicals()) {
+            if (m.getMedicalId() == medicalId) return m;
+        }
+        return null;
+    }
+
+    /** Pending + approved medicals of a student for one course (rejected medicals do not use a slot). */
+    public int countActiveMedicals(String regNo, String courseCode) {
+        int count = 0;
+        for (MedicalRecord m : getMedicalsByStudent(regNo)) {
+            if (m.getCourseCode().equalsIgnoreCase(courseCode) && m.getStatus() != MedicalStatus.REJECTED) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /** True when the same absent session already has a pending or approved medical. */
+    public boolean hasActiveMedicalForSession(String regNo, String courseCode, ComponentType component, int sessionNumber) {
+        for (MedicalRecord m : getMedicalsByStudent(regNo)) {
+            if (m.getCourseCode().equalsIgnoreCase(courseCode)
+                    && m.getComponentType() == component
+                    && m.getSessionNumber() == sessionNumber
+                    && m.getStatus() != MedicalStatus.REJECTED) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Pushes the medical status onto the matching attendance record so the Attendance tabs stay correct. */
+    private void syncAttendance(MedicalRecord m) {
+        boolean submitted = m.getStatus() != MedicalStatus.REJECTED;
+        boolean approved = m.getStatus() == MedicalStatus.APPROVED;
+        new AttendanceDAO().updateMedicalFlags(m.getStudentRegNo(), m.getCourseCode(),
+                m.getComponentType(), m.getSessionNumber(), submitted, approved);
     }
 
     private MedicalRecord extractMedical(ResultSet rs) throws SQLException {

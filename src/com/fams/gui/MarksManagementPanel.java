@@ -25,7 +25,7 @@ public class MarksManagementPanel extends JPanel {
         add(new JLabel("Marks, Assessment & Eligibility"),BorderLayout.NORTH);
         add(new JScrollPane(table),BorderLayout.CENTER);
         JPanel actions=new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JButton addAssessment=new JButton("Add Assessment"), enter=new JButton("Enter / Update Mark"), eligibility=new JButton("Check Eligibility"), refresh=new JButton("Refresh");
+        JButton addAssessment=Theme.styleButton(new JButton("Add Assessment")), enter=Theme.styleButton(new JButton("Enter / Update Mark")), eligibility=Theme.styleButton(new JButton("Check Eligibility")), refresh=Theme.styleButton(new JButton("Refresh"));
         boolean lecturer=role.equals("LECTURER")||role.equals("ADMIN");
         addAssessment.setEnabled(lecturer);enter.setEnabled(lecturer);
         actions.add(addAssessment);actions.add(enter);actions.add(eligibility);actions.add(refresh);add(actions,BorderLayout.SOUTH);
