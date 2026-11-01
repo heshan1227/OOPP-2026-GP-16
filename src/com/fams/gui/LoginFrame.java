@@ -85,7 +85,6 @@ public class LoginFrame extends JFrame {
         gbc.gridy++;
         txtUsername = new JTextField(20);
         txtUsername.setFont(Theme.FONT_REGULAR);
-        txtUsername.setText("admin");
         formCard.add(txtUsername, gbc);
 
         gbc.gridy++;
@@ -94,7 +93,6 @@ public class LoginFrame extends JFrame {
         gbc.gridy++;
         txtPassword = new JPasswordField(20);
         txtPassword.setFont(Theme.FONT_REGULAR);
-        txtPassword.setText("admin123");
         formCard.add(txtPassword, gbc);
 
         gbc.gridy++;
