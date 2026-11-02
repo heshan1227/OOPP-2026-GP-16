@@ -44,6 +44,12 @@ public class AttendanceService {
         attendanceDAO.saveOrUpdateAttendance(record);
     }
 
+    /** Remove an attendance session. Only Admins and Technical Officers may maintain records. */
+    public boolean deleteAttendance(String regNo, String courseCode, ComponentType component, int sessionNumber) throws UnauthorizedAccessException {
+        AuthService.getInstance().requireRole(Role.TECHNICAL_OFFICER, Role.ADMIN);
+        return attendanceDAO.deleteAttendance(regNo, courseCode, component, sessionNumber);
+    }
+
     // --- POLYMORPHISM: METHOD OVERLOADING FOR ATTENDANCE CALCULATIONS ---
 
     /**
@@ -93,15 +99,17 @@ public class AttendanceService {
         List<MedicalRecord> medicals = medicalDAO.getMedicalsByStudent(studentRegNo);
 
         int theoryAttended = 0;
-        int totalTheory = 15; // standard 15 sessions
+        int totalTheory = 0;
         int practicalAttended = 0;
-        int totalPractical = 15; // standard 15 sessions
+        int totalPractical = 0;
 
         for (AttendanceRecord r : records) {
-            if (r.getComponentType() == ComponentType.THEORY && r.isPresent()) {
-                theoryAttended++;
-            } else if (r.getComponentType() == ComponentType.PRACTICAL && r.isPresent()) {
-                practicalAttended++;
+            if (r.getComponentType() == ComponentType.THEORY) {
+                totalTheory++;
+                if (r.isPresent()) theoryAttended++;
+            } else if (r.getComponentType() == ComponentType.PRACTICAL) {
+                totalPractical++;
+                if (r.isPresent()) practicalAttended++;
             }
         }
 
@@ -116,7 +124,10 @@ public class AttendanceService {
         String name = (ug != null) ? ug.getFullName() : studentRegNo;
         String batch = (ug != null) ? ug.getBatch() : "Batch 16";
 
-        double combinedPct = (double) (theoryAttended + practicalAttended) / (totalTheory + totalPractical) * 100.0;
+        // Every 1T and 1P session is 2 hours; compare attended hours with scheduled hours.
+        double attendedHours = (theoryAttended + practicalAttended) * 2.0;
+        double scheduledHours = (totalTheory + totalPractical) * 2.0;
+        double combinedPct = scheduledHours == 0 ? 0.0 : attendedHours / scheduledHours * 100.0;
 
         String scenarioNote;
         if (combinedPct > 80.0 && approvedMeds == 0) {

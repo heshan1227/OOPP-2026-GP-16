@@ -24,6 +24,7 @@ public class MainFrame extends JFrame {
     private ProfilePanel profilePanel;
     private StudentPortalPanel studentPortalPanel;
     private CourseListPanel courseListPanel;
+    private StudentProfilePanel studentProfilePanel;
 
     private CircularAvatar topBarAvatar;
     private JLabel userInfoLabel;
@@ -71,7 +72,8 @@ public class MainFrame extends JFrame {
         userInfoLabel.setFont(Theme.FONT_SUBHEADER);
         userInfoLabel.setForeground(Color.WHITE);
 
-        JButton btnLogout = Theme.createSecondaryButton("Switch Role / Logout");
+        JButton btnLogout = Theme.createSecondaryButton("Logout");
+        
         btnLogout.setFont(Theme.FONT_SMALL);
         btnLogout.addActionListener(e -> logout());
 
@@ -87,7 +89,7 @@ public class MainFrame extends JFrame {
         // --- LEFT SIDEBAR ---
         JPanel sidebar = new JPanel();
         sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
-        sidebar.setBackground(new Color(30, 41, 59));
+        sidebar.setBackground(Theme.PRIMARY_DARK);
         sidebar.setPreferredSize(new Dimension(240, 0));
         sidebar.setBorder(new EmptyBorder(15, 10, 15, 10));
 
@@ -107,6 +109,12 @@ public class MainFrame extends JFrame {
         // User Management: Admin only
         if (role.equals("ADMIN")) {
             sidebar.add(createNavButton("User Management", "CARD_USERS"));
+            sidebar.add(Box.createVerticalStrut(8));
+        }
+
+        // Student profiles: Lecturer only (read-only undergraduate directory)
+        if (role.equals("LECTURER")) {
+            sidebar.add(createNavButton("Student Profiles", "CARD_STUDENT_PROFILES"));
             sidebar.add(Box.createVerticalStrut(8));
         }
 
@@ -154,6 +162,12 @@ public class MainFrame extends JFrame {
             sidebar.add(Box.createVerticalStrut(8));
         }
 
+        // Personal academic results: undergraduate students only
+        if (role.equals("UNDERGRADUATE")) {
+            sidebar.add(createNavButton("My Grades & GPA", "CARD_STUDENT_PORTAL"));
+            sidebar.add(Box.createVerticalStrut(8));
+        }
+
         // My Profile: available to all roles
         sidebar.add(createNavButton("My Profile", "CARD_PROFILE"));
 
@@ -187,6 +201,7 @@ public class MainFrame extends JFrame {
         marksPanel = new MarksManagementPanel();
         profilePanel = new ProfilePanel(this::onProfileUpdated);
         studentPortalPanel = new StudentPortalPanel();
+        studentProfilePanel = new StudentProfilePanel();
 
         contentCardPanel.add(dashboardPanel, "CARD_DASHBOARD");
         contentCardPanel.add(userPanel, "CARD_USERS");
@@ -199,6 +214,7 @@ public class MainFrame extends JFrame {
         contentCardPanel.add(timetablePanel, "CARD_TIMETABLE");
         contentCardPanel.add(profilePanel, "CARD_PROFILE");
         contentCardPanel.add(studentPortalPanel, "CARD_STUDENT_PORTAL");
+        contentCardPanel.add(studentProfilePanel, "CARD_STUDENT_PROFILES");
 
         mainLayout.add(contentCardPanel, BorderLayout.CENTER);
 
@@ -215,7 +231,7 @@ public class MainFrame extends JFrame {
         lblDbStatus.setFont(Theme.FONT_SMALL);
         lblDbStatus.setForeground(DBConnection.isUseMemoryFallback() ? Theme.PRIMARY_DARK : Theme.SUCCESS);
 
-        JLabel lblGroup = new JLabel("ICT2132 Mini Project | Group B16 - Member 04 (Attendance, Medical, Notice & Timetable)");
+        JLabel lblGroup = new JLabel("ICT2132 Mini Project | Faculty of Technology");
         lblGroup.setFont(Theme.FONT_SMALL);
         lblGroup.setForeground(Theme.TEXT_MUTED);
 
@@ -231,7 +247,12 @@ public class MainFrame extends JFrame {
     }
 
     private JButton createNavButton(String text, String cardName) {
-        JButton btn = Theme.createPrimaryButton(text);
+        // Light buttons remain clearly visible against the dark-maroon sidebar.
+        JButton btn = Theme.createSecondaryButton(text);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btn.setPreferredSize(new Dimension(210, 42));
+        btn.setMinimumSize(new Dimension(190, 42));
+        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
         btn.setAlignmentX(Component.CENTER_ALIGNMENT);
         navButtons.put(cardName, btn);
         btn.addActionListener(e -> showCard(cardName));
@@ -239,15 +260,21 @@ public class MainFrame extends JFrame {
     }
 
     public void showCard(String cardName) {
+        // Reload data so a medical approved/rejected in one screen shows up in the other immediately.
+        if ("CARD_ATTENDANCE".equals(cardName) && attendancePanel != null) attendancePanel.refreshAll();
+        if ("CARD_MEDICAL".equals(cardName) && medicalPanel != null) medicalPanel.refreshAll();
+        if ("CARD_STUDENT_PROFILES".equals(cardName) && studentProfilePanel != null) studentProfilePanel.refreshStudents();
         cardLayout.show(contentCardPanel, cardName);
         for (java.util.Map.Entry<String, JButton> entry : navButtons.entrySet()) {
             JButton b = entry.getValue();
             if (entry.getKey().equals(cardName)) {
+                Theme.setNavSelected(b, true);
                 b.setBorder(new javax.swing.border.CompoundBorder(
                         new javax.swing.border.LineBorder(Theme.PRIMARY, 2),
                         new javax.swing.border.EmptyBorder(7, 11, 7, 11)
                 ));
             } else {
+                Theme.setNavSelected(b, false);
                 b.setBorder(new javax.swing.border.CompoundBorder(
                         new javax.swing.border.LineBorder(new Color(203, 213, 225), 1),
                         new javax.swing.border.EmptyBorder(8, 12, 8, 12)

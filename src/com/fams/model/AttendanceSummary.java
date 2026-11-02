@@ -66,6 +66,18 @@ public class AttendanceSummary {
         return (double) getTotalAttended() / total * 100.0;
     }
 
+    /** Sessions attended plus sessions covered by an approved medical (never more than the total). */
+    public int getTotalAttendedWithMedicals() {
+        return Math.min(getTotalSessions(), getTotalAttended() + approvedMedicalsCount);
+    }
+
+    /** Attendance % after counting approved-medical absences as covered. */
+    public double getMedicalAdjustedPercentage() {
+        int total = getTotalSessions();
+        if (total == 0) return 0.0;
+        return (double) getTotalAttendedWithMedicals() / total * 100.0;
+    }
+
     public boolean is80PercentEligible() {
         return getCombinedPercentage() >= 80.0;
     }

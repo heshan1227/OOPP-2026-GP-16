@@ -76,6 +76,25 @@ public class AttendanceDAO {
         }
     }
 
+
+    /** Delete one attendance entry using its natural session key. */
+    public boolean deleteAttendance(String regNo, String courseCode, ComponentType component, int sessionNumber) {
+        try (Connection conn = DBConnection.getConnection()) {
+            if (conn != null) {
+                String sql = "DELETE FROM attendance_records WHERE student_reg_no=? AND course_code=? AND component_type=? AND session_number=?";
+                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.setString(1, regNo); stmt.setString(2, courseCode);
+                    stmt.setString(3, component.name()); stmt.setInt(4, sessionNumber);
+                    return stmt.executeUpdate() > 0;
+                }
+            }
+        } catch (SQLException e) { /* use memory fallback */ }
+        DatabaseInitializer.initializeSampleData();
+        return DatabaseInitializer.ATTENDANCE_RECORDS.removeIf(r ->
+                r.getStudentRegNo().equalsIgnoreCase(regNo) && r.getCourseCode().equalsIgnoreCase(courseCode)
+                && r.getComponentType() == component && r.getSessionNumber() == sessionNumber);
+    }
+
     public List<AttendanceRecord> getAttendanceByStudent(String regNo, String courseCode) {
         List<AttendanceRecord> list = new ArrayList<>();
         try {
@@ -125,6 +144,87 @@ public class AttendanceDAO {
 
         DatabaseInitializer.initializeSampleData();
         return new ArrayList<>(DatabaseInitializer.ATTENDANCE_RECORDS);
+    }
+
+    /** Returns only absent sessions for a student within an inclusive date range. */
+    public List<AttendanceRecord> getAbsentAttendanceByStudent(String regNo, LocalDate from, LocalDate to) {
+        List<AttendanceRecord> list = new ArrayList<>();
+        try {
+            Connection conn = DBConnection.getConnection();
+            if (conn != null) {
+                String sql = "SELECT * FROM attendance_records WHERE student_reg_no = ? AND is_present = FALSE AND session_date BETWEEN ? AND ? ORDER BY session_date, course_code";
+                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.setString(1, regNo);
+                    stmt.setDate(2, Date.valueOf(from));
+                    stmt.setDate(3, Date.valueOf(to));
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        while (rs.next()) list.add(extractAttendance(rs));
+                        return list;
+                    }
+                }
+            }
+        } catch (SQLException e) { /* use in-memory sample data */ }
+
+        DatabaseInitializer.initializeSampleData();
+        for (AttendanceRecord r : DatabaseInitializer.ATTENDANCE_RECORDS) {
+            if (r.getStudentRegNo().equalsIgnoreCase(regNo) && !r.isPresent()
+                    && !r.getSessionDate().isBefore(from) && !r.getSessionDate().isAfter(to)) list.add(r);
+        }
+        list.sort((a, b) -> a.getSessionDate().compareTo(b.getSessionDate()));
+        return list;
+    }
+
+    /**
+     * Absent sessions of a student (inclusive date range) that can still be covered by a NEW medical.
+     * Sessions that already have a pending or approved medical are hidden so the same absence
+     * cannot be submitted twice.
+     */
+    public List<AttendanceRecord> getAbsencesAvailableForMedical(String regNo, LocalDate from, LocalDate to) {
+        List<AttendanceRecord> result = new ArrayList<>();
+        for (AttendanceRecord r : getAbsentAttendanceByStudent(regNo, from, to)) {
+            if (!r.isHasMedicalSubmitted()) result.add(r);
+        }
+        return result;
+    }
+
+    /**
+     * Keeps attendance in step with the medical workflow.
+     * PENDING  -> submitted = true,  approved = false
+     * APPROVED -> submitted = true,  approved = true
+     * REJECTED -> submitted = false, approved = false (the absence goes back to a plain absence)
+     */
+    public void updateMedicalFlags(String regNo, String courseCode, ComponentType component,
+                                   int sessionNumber, boolean submitted, boolean approved) {
+        try (Connection conn = DBConnection.getConnection()) {
+            if (conn != null) {
+                String sql = "UPDATE attendance_records SET has_medical_submitted = ?, is_medical_approved = ? " +
+                        "WHERE student_reg_no = ? AND course_code = ? AND component_type = ? AND session_number = ?";
+                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.setBoolean(1, submitted);
+                    stmt.setBoolean(2, approved);
+                    stmt.setString(3, regNo);
+                    stmt.setString(4, courseCode);
+                    stmt.setString(5, component.name());
+                    stmt.setInt(6, sessionNumber);
+                    stmt.executeUpdate();
+                    return;
+                }
+            }
+        } catch (SQLException e) {
+            // Fallback to memory store below
+        }
+
+        DatabaseInitializer.initializeSampleData();
+        for (AttendanceRecord r : DatabaseInitializer.ATTENDANCE_RECORDS) {
+            if (r.getStudentRegNo().equalsIgnoreCase(regNo)
+                    && r.getCourseCode().equalsIgnoreCase(courseCode)
+                    && r.getComponentType() == component
+                    && r.getSessionNumber() == sessionNumber) {
+                r.setHasMedicalSubmitted(submitted);
+                r.setMedicalApproved(approved);
+                break;
+            }
+        }
     }
 
     private AttendanceRecord extractAttendance(ResultSet rs) throws SQLException {

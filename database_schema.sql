@@ -820,8 +820,8 @@ SELECT u.student_reg_no, u.full_name, c.course_code, cp.component_type, sn.sessi
          WHEN MOD(CAST(SUBSTRING(u.user_id, 3) AS UNSIGNED), 5) = 2 AND sn.session_number > 3 THEN FALSE
          ELSE TRUE
        END,
-       CASE WHEN MOD(CAST(SUBSTRING(u.user_id, 3) AS UNSIGNED), 5) IN (3,4) AND sn.session_number IN (4,9,13) THEN TRUE ELSE FALSE END,
-       CASE WHEN MOD(CAST(SUBSTRING(u.user_id, 3) AS UNSIGNED), 5) IN (3,4) AND sn.session_number IN (4,9,13) THEN TRUE ELSE FALSE END
+       FALSE, -- has_medical_submitted: kept in step with medical_records by the sync statement at the end of this file
+       FALSE  -- is_medical_approved
 FROM users u
 JOIN courses c ON c.department = u.department
 JOIN (SELECT 'THEORY' component_type UNION ALL SELECT 'PRACTICAL') cp
@@ -862,4 +862,22 @@ JOIN (SELECT 4 session_number UNION ALL SELECT 9 session_number) sn
 WHERE u.role='UNDERGRADUATE' AND u.student_reg_no IS NOT NULL
   AND MOD(CAST(SUBSTRING(u.user_id, 3) AS UNSIGNED), 5) IN (3,4)
   AND ((cp.component_type='THEORY' AND c.theory_credits>0) OR (cp.component_type='PRACTICAL' AND c.practical_credits>0))
+  AND (cp.component_type='THEORY' OR sn.session_number=4) -- max 3 medicals per student per subject
   AND NOT EXISTS (SELECT 1 FROM medical_records mr WHERE mr.reference_no=CONCAT('MED-',u.user_id,'-',c.course_code,'-',cp.component_type,'-',sn.session_number));
+
+-- ---------------------------------------------------------------------------------------------
+-- Keep attendance in step with medical records
+--   PENDING  medical -> has_medical_submitted = TRUE,  is_medical_approved = FALSE
+--   APPROVED medical -> has_medical_submitted = TRUE,  is_medical_approved = TRUE
+--   REJECTED / no medical -> both FALSE
+-- (The application does this automatically when a medical is uploaded / approved / rejected.)
+-- ---------------------------------------------------------------------------------------------
+UPDATE attendance_records SET has_medical_submitted = FALSE, is_medical_approved = FALSE WHERE record_id > 0;
+
+UPDATE attendance_records ar
+JOIN medical_records mr
+  ON mr.student_reg_no = ar.student_reg_no AND mr.course_code = ar.course_code
+ AND mr.component_type = ar.component_type AND mr.session_number = ar.session_number
+SET ar.has_medical_submitted = TRUE,
+    ar.is_medical_approved   = (mr.status = 'APPROVED')
+WHERE mr.status IN ('PENDING', 'APPROVED') AND ar.is_present = FALSE AND ar.record_id > 0;

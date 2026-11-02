@@ -12,6 +12,7 @@ public class Main {
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception ignored) {}
+        com.fams.gui.Theme.installButtonDefaults();
 
         // Pre-initialize dataset and fallbacks
         DatabaseInitializer.initializeSampleData();

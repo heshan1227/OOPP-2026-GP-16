@@ -28,14 +28,19 @@ public class AttendancePanel extends JPanel {
     private JComboBox<String> cbStudents;
     private JCheckBox chkIsPresent;
     private DefaultTableModel recordTableModel;
+    private JTable recordTable;
 
     // Tab 2 Components (Individual View)
     private JComboBox<String> cbIndividualStudent;
-    private JLabel lblTheoryVal, lblPracticalVal, lblCombinedVal, lblMedsVal, lblScenarioVal, lblEligibleVal;
+    private JComboBox<String> cbIndividualCourse;
+    private JComboBox<String> cbBatchCourse;
+    private JLabel lblTheoryVal, lblPracticalVal, lblCombinedVal, lblMedsVal, lblAdjustedVal, lblScenarioVal, lblEligibleVal;
 
     // Tab 3 Components (Batch View)
     private JComboBox<String> cbBatchFilterComponent;
     private DefaultTableModel batchTableModel;
+
+    private StudentAttendancePanel studentAttendancePanel;
 
     public AttendancePanel() {
         this.attendanceService = new AttendanceService();
@@ -53,18 +58,26 @@ public class AttendancePanel extends JPanel {
         tabbedPane = new JTabbedPane();
         tabbedPane.setFont(Theme.FONT_SUBHEADER);
 
-        // Tab 1: Technical Officer Attendance Entry Form (If authorized)
+        // Keep the existing Attendance Subsystem tabs intact. The student daily/course-wise
+        // attendance screen is an additional tab, not a replacement for the subsystem.
         if (user != null && (user.getRole() == Role.TECHNICAL_OFFICER || user.getRole() == Role.ADMIN)) {
             tabbedPane.addTab("Mark & Maintain Attendance (TO)", createRecordEntryPanel());
         }
-
-        // Tab 2: Individual Attendance Summary & Scenarios
         tabbedPane.addTab("Individual Attendance & Scenarios", createIndividualSummaryPanel());
-
-        // Tab 3: Whole Batch Attendance Summary
         tabbedPane.addTab("Batch Attendance Summary", createBatchSummaryPanel());
-
+        if (user != null && user.getRole() == Role.UNDERGRADUATE) {
+            studentAttendancePanel = new StudentAttendancePanel();
+            tabbedPane.addTab("My Daily Attendance", studentAttendancePanel);
+        }
         add(tabbedPane, BorderLayout.CENTER);
+    }
+
+    /** Reloads every attendance view so medical approvals/rejections show up immediately. */
+    public void refreshAll() {
+        refreshRecordTable();
+        if (cbIndividualStudent != null) refreshIndividualSummary();
+        refreshBatchSummary();
+        if (studentAttendancePanel != null) studentAttendancePanel.refresh();
     }
 
     // --- TAB 1: RECORD ENTRY PANEL ---
@@ -127,13 +140,27 @@ public class AttendancePanel extends JPanel {
         btnSave.addActionListener(e -> saveAttendance());
         formCard.add(btnSave, gbc);
 
+        cbCourseCode.addActionListener(e -> refreshRecordTable());
+        cbStudents.addActionListener(e -> refreshRecordTable());
         panel.add(formCard, BorderLayout.NORTH);
 
         // Table Card
         JPanel tableCard = Theme.createCardPanel();
         tableCard.setLayout(new BorderLayout());
 
-        JLabel tableHeader = Theme.createHeaderLabel("Attendance Log");
+        JPanel tableHeader = new JPanel(new BorderLayout(8, 6));
+        tableHeader.setOpaque(false);
+        tableHeader.add(Theme.createHeaderLabel("Attendance Log — Select a row to maintain a record"), BorderLayout.NORTH);
+        JPanel recordActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 2));
+        recordActions.setOpaque(false);
+        JButton btnDelete = Theme.createDangerButton("Delete Selected Record");
+        btnDelete.addActionListener(e -> deleteSelectedAttendance());
+        JButton btnRefreshRecords = Theme.createSecondaryButton("Refresh Records");
+        btnRefreshRecords.addActionListener(e -> refreshRecordTable());
+        recordActions.add(btnDelete);
+        recordActions.add(btnRefreshRecords);
+        recordActions.add(new JLabel("Use Mark Present checkbox to record Present / Absent."));
+        tableHeader.add(recordActions, BorderLayout.SOUTH);
         tableCard.add(tableHeader, BorderLayout.NORTH);
 
         String[] cols = {"Reg No", "Student Name", "Course", "Component", "Session", "Date", "Status"};
@@ -141,15 +168,57 @@ public class AttendancePanel extends JPanel {
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
         };
-        JTable table = new JTable(recordTableModel);
-        table.setFont(Theme.FONT_REGULAR);
-        table.setRowHeight(24);
+        recordTable = new JTable(recordTableModel);
+        styleMaroonTable(recordTable);
 
-        tableCard.add(new JScrollPane(table), BorderLayout.CENTER);
+        tableCard.add(new JScrollPane(recordTable), BorderLayout.CENTER);
         panel.add(tableCard, BorderLayout.CENTER);
 
         refreshRecordTable();
         return panel;
+    }
+
+    private void styleMaroonTable(JTable table) {
+        table.setFont(Theme.FONT_REGULAR);
+        table.setRowHeight(29);
+        table.setForeground(Theme.PRIMARY_DARK);
+        table.setSelectionBackground(new Color(218, 190, 197));
+        table.setSelectionForeground(Theme.PRIMARY_DARK);
+        table.setFillsViewportHeight(true);
+        table.setShowGrid(true);
+        table.setGridColor(Color.WHITE);
+        table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override public Component getTableCellRendererComponent(JTable t, Object value, boolean selected,
+                                                                      boolean focus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(t, value, selected, focus, row, column);
+                if (!selected) c.setBackground(row % 2 == 0 ? new Color(245, 232, 236) : new Color(232, 211, 217));
+                c.setForeground(Theme.PRIMARY_DARK);
+                setHorizontalAlignment(SwingConstants.CENTER);
+                return c;
+            }
+        });
+        styleMaroonHeader(table);
+    }
+
+    private void styleMaroonHeader(JTable table) {
+        javax.swing.table.JTableHeader header = table.getTableHeader();
+        header.setFont(Theme.FONT_SUBHEADER);
+        header.setBackground(Theme.PRIMARY_DARK);
+        header.setForeground(Color.WHITE);
+        header.setOpaque(true);
+        header.setReorderingAllowed(false);
+        header.setDefaultRenderer(new javax.swing.table.TableCellRenderer() {
+            @Override public Component getTableCellRendererComponent(JTable t, Object value, boolean selected,
+                                                                      boolean focus, int row, int column) {
+                JLabel label = new JLabel(value == null ? "" : value.toString(), SwingConstants.CENTER);
+                label.setOpaque(true);
+                label.setFont(Theme.FONT_SUBHEADER);
+                label.setForeground(Color.WHITE);
+                label.setBackground(Theme.PRIMARY_DARK);
+                label.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 1, Color.WHITE));
+                return label;
+            }
+        });
     }
 
     private void populateStudentCombo() {
@@ -189,6 +258,29 @@ public class AttendancePanel extends JPanel {
         }
     }
 
+    private void deleteSelectedAttendance() {
+        int row = recordTable == null ? -1 : recordTable.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Please select an attendance record to delete.", "Selection Required", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        int modelRow = recordTable.convertRowIndexToModel(row);
+        String regNo = String.valueOf(recordTableModel.getValueAt(modelRow, 0));
+        String course = String.valueOf(recordTableModel.getValueAt(modelRow, 2));
+        String componentText = String.valueOf(recordTableModel.getValueAt(modelRow, 3));
+        int sessionNo = Integer.parseInt(String.valueOf(recordTableModel.getValueAt(modelRow, 4)).replace("Session ", ""));
+        ComponentType component = componentText.toLowerCase().contains("practical") ? ComponentType.PRACTICAL : ComponentType.THEORY;
+        int confirm = JOptionPane.showConfirmDialog(this, "Delete " + regNo + " / " + course + " / " + componentText + " / Session " + sessionNo + "?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) return;
+        try {
+            boolean deleted = attendanceService.deleteAttendance(regNo, course, component, sessionNo);
+            JOptionPane.showMessageDialog(this, deleted ? "Attendance record deleted." : "Record was not found.");
+            refreshAll();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Unable to delete attendance: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
     private void refreshRecordTable() {
         if (recordTableModel == null) return;
         recordTableModel.setRowCount(0);
@@ -216,6 +308,11 @@ public class AttendancePanel extends JPanel {
         JPanel selectPanel = Theme.createCardPanel();
         selectPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 15, 10));
 
+        selectPanel.add(new JLabel("Course:"));
+        cbIndividualCourse = new JComboBox<>(new String[]{"ICT2132", "ICT2113", "ICT2122", "ENG2102"});
+        cbIndividualCourse.addActionListener(e -> refreshIndividualSummary());
+        selectPanel.add(cbIndividualCourse);
+
         selectPanel.add(new JLabel("Select Undergraduate:"));
         cbIndividualStudent = new JComboBox<>();
         populateStudentComboToIndividual();
@@ -230,7 +327,7 @@ public class AttendancePanel extends JPanel {
 
         // Summary Details Card
         JPanel card = Theme.createCardPanel();
-        card.setLayout(new GridLayout(6, 2, 15, 15));
+        card.setLayout(new GridLayout(7, 2, 15, 15));
 
         card.add(new JLabel("Theory Attendance (15 Sessions):"));
         lblTheoryVal = new JLabel("-");
@@ -252,6 +349,11 @@ public class AttendancePanel extends JPanel {
         lblMedsVal = new JLabel("-");
         lblMedsVal.setFont(Theme.FONT_HEADER);
         card.add(lblMedsVal);
+
+        card.add(new JLabel("Attendance incl. Approved Medicals:"));
+        lblAdjustedVal = new JLabel("-");
+        lblAdjustedVal.setFont(Theme.FONT_HEADER);
+        card.add(lblAdjustedVal);
 
         card.add(new JLabel("80% Examination Eligibility:"));
         lblEligibleVal = new JLabel("-");
@@ -292,12 +394,15 @@ public class AttendancePanel extends JPanel {
         if (sel == null) return;
 
         String regNo = sel.split(" - ")[0];
-        AttendanceSummary summary = attendanceService.generateIndividualSummary(regNo, "ICT2132");
+        String course = cbIndividualCourse == null ? "ICT2132" : (String) cbIndividualCourse.getSelectedItem();
+        if (course == null) course = "ICT2132";
+        AttendanceSummary summary = attendanceService.generateIndividualSummary(regNo, course);
 
         lblTheoryVal.setText(summary.getTheoryAttended() + " / 15 (" + String.format("%.1f", summary.getTheoryPercentage()) + "%)");
         lblPracticalVal.setText(summary.getPracticalAttended() + " / 15 (" + String.format("%.1f", summary.getPracticalPercentage()) + "%)");
         lblCombinedVal.setText(summary.getTotalAttended() + " / 30 (" + String.format("%.1f", summary.getCombinedPercentage()) + "%)");
         lblMedsVal.setText(summary.getApprovedMedicalsCount() + " Approved Certificates");
+        lblAdjustedVal.setText(summary.getTotalAttendedWithMedicals() + " / 30 (" + String.format("%.1f", summary.getMedicalAdjustedPercentage()) + "%)");
 
         if (summary.is80PercentEligible()) {
             lblEligibleVal.setText("ELIGIBLE TO SIT FINAL EXAM");
@@ -321,8 +426,11 @@ public class AttendancePanel extends JPanel {
         JPanel topBar = Theme.createCardPanel();
         topBar.setLayout(new FlowLayout(FlowLayout.LEFT, 15, 10));
 
-        topBar.add(new JLabel("Course Module: ICT2132"));
-        topBar.add(Box.createHorizontalStrut(20));
+        topBar.add(new JLabel("Course Module:"));
+        cbBatchCourse = new JComboBox<>(new String[]{"ICT2132", "ICT2113", "ICT2122", "ENG2102"});
+        cbBatchCourse.addActionListener(e -> refreshBatchSummary());
+        topBar.add(cbBatchCourse);
+        topBar.add(Box.createHorizontalStrut(12));
         topBar.add(new JLabel("View Component:"));
 
         cbBatchFilterComponent = new JComboBox<>(new String[]{"Combined (Theory + Practical)", "Theory Only", "Practical Only"});
@@ -335,7 +443,7 @@ public class AttendancePanel extends JPanel {
 
         panel.add(topBar, BorderLayout.NORTH);
 
-        String[] cols = {"Reg No", "Undergraduate Name", "Batch", "Theory %", "Practical %", "Selected View %", "Approved Meds", "Eligibility Status"};
+        String[] cols = {"Reg No", "Undergraduate Name", "Batch", "Theory %", "Practical %", "Selected View %", "Approved Meds", "Incl. Medicals %", "Eligibility Status"};
         batchTableModel = new DefaultTableModel(cols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
@@ -350,7 +458,7 @@ public class AttendancePanel extends JPanel {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
                 Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-                String status = (String) table.getValueAt(row, 7);
+                String status = (String) table.getValueAt(row, 8);
                 if (status != null && status.contains("Not Eligible")) {
                     c.setForeground(Theme.DANGER);
                     c.setFont(Theme.FONT_SUBHEADER);
@@ -358,12 +466,16 @@ public class AttendancePanel extends JPanel {
                     c.setForeground(Theme.WARNING);
                     c.setFont(Theme.FONT_SUBHEADER);
                 } else {
-                    c.setForeground(Theme.TEXT_MAIN);
+                    c.setForeground(Theme.PRIMARY_DARK);
                     c.setFont(Theme.FONT_REGULAR);
                 }
+                c.setBackground(isSelected ? new Color(218, 190, 197)
+                        : (row % 2 == 0 ? new Color(245, 232, 236) : new Color(232, 211, 217)));
+                ((JLabel)c).setHorizontalAlignment(SwingConstants.CENTER);
                 return c;
             }
         });
+        styleMaroonHeader(table);
 
         panel.add(new JScrollPane(table), BorderLayout.CENTER);
 
@@ -376,7 +488,9 @@ public class AttendancePanel extends JPanel {
         batchTableModel.setRowCount(0);
 
         int filterIdx = cbBatchFilterComponent != null ? cbBatchFilterComponent.getSelectedIndex() : 0;
-        List<AttendanceSummary> list = attendanceService.generateBatchSummary("ICT2132");
+        String course = cbBatchCourse == null ? "ICT2132" : (String) cbBatchCourse.getSelectedItem();
+        if (course == null) course = "ICT2132";
+        List<AttendanceSummary> list = attendanceService.generateBatchSummary(course);
 
         for (AttendanceSummary s : list) {
             double selectedPct;
@@ -390,8 +504,10 @@ public class AttendancePanel extends JPanel {
                 String.format("%.1f%%", s.getPracticalPercentage()),
                 String.format("%.1f%%", selectedPct),
                 s.getApprovedMedicalsCount(),
+                String.format("%.1f%%", s.getMedicalAdjustedPercentage()),
                 s.getEligibilityStatus()
             });
         }
     }
 }
+
