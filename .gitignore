@@ -1,5 +1,16 @@
+# Maven
 target/
-build-check/
-*.iml
+
+# IntelliJ IDEA
 .idea/
+*.iml
+
+# Compiled Java
 *.class
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
