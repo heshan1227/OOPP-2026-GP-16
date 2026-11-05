@@ -227,18 +227,3 @@ public class AttendanceDAO {
         }
     }
 
-    private AttendanceRecord extractAttendance(ResultSet rs) throws SQLException {
-        int id = rs.getInt("record_id");
-        String regNo = rs.getString("student_reg_no");
-        String name = rs.getString("student_name");
-        String courseCode = rs.getString("course_code");
-        ComponentType comp = ComponentType.valueOf(rs.getString("component_type"));
-        int sessionNo = rs.getInt("session_number");
-        LocalDate date = rs.getDate("session_date").toLocalDate();
-        boolean isPresent = rs.getBoolean("is_present");
-        boolean hasMed = rs.getBoolean("has_medical_submitted");
-        boolean isMedApproved = rs.getBoolean("is_medical_approved");
-
-        return new AttendanceRecord(id, regNo, name, courseCode, "Course " + courseCode, comp, sessionNo, date, isPresent, hasMed, isMedApproved);
-    }
-}
