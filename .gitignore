@@ -5,12 +5,12 @@ target/
 .idea/
 *.iml
 
-# Compiled Java
+# Compiled Java files
 *.class
 
 # Logs
 *.log
 
-# OS files
+# Operating system files
 .DS_Store
 Thumbs.db
