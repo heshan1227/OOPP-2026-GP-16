@@ -28,8 +28,8 @@ Extract the ZIP and open the extracted project folder (the folder containing `po
 ## First-time setup
 
 1. Start MySQL.
-2. Open `src/main/resources/sql/FAMS_complete_database_setup_FIXED_v2.sql` in MySQL Workbench or phpMyAdmin and execute it. It creates `fams_db`, core tables and the integrated assessment/marks/enrollment/material tables.
-3. The default connection is `localhost:3306`, database `fams_db`, user `root`, password `1234` (edit `src/main/resources/database.properties` or set `FAMS_DB_PASSWORD` if your local MySQL root password differs).
+2. Open `database_schema.sql` in MySQL Workbench or phpMyAdmin and execute it. It creates `fams_db`, core tables and the integrated assessment/marks/enrollment/material tables.
+3. The default connection is `localhost:3306`, database `fams_db`, user `root`, password `1234` (change `DBConnection.java` or set `FAMS_DB_PASSWORD` if your local MySQL root password differs).
 4. If your MySQL credentials differ, set environment variables before launching:
    - `FAMS_DB_URL` (optional; default JDBC URL is in `DBConnection.java`)
    - `FAMS_DB_USER`
@@ -40,12 +40,12 @@ Extract the ZIP and open the extracted project folder (the folder containing `po
    ```
 6. Run:
    ```bash
-   java -jar target/fams-integrated-1.0.0.jar   # main class: fams.Main
+   java -jar target/fams-integrated-1.0.0.jar
    ```
 
 ## Demo data and credentials
 
-`src/main/resources/sql/FAMS_complete_database_setup_FIXED_v2.sql` includes sample users, current-semester courses, generated attendance coverage across seeded undergraduates and course components, medical scenario records and assessment templates. Seed accounts use classroom-only sample credentials in the SQL seed section. Do not use these accounts or credentials for a real deployment. Password hashing and credential migration must be completed before real student data is used.
+`database_schema.sql` includes sample users, current-semester courses, generated attendance coverage across seeded undergraduates and course components, medical scenario records and assessment templates. Seed accounts use classroom-only sample credentials in the SQL seed section. Do not use these accounts or credentials for a real deployment. Password hashing and credential migration must be completed before real student data is used.
 
 The Marks & Eligibility panel and `MarksService`/`MarksDAO` provide database-based eligibility queries and grade/SGPA calculation utilities. A role-aware **My Profile** screen is available to all users; undergraduate profile edits are restricted to contact fields and profile-picture path, while lecturer/TO profiles can edit other profile details but not username/password. The undergraduate **My Student Portal** provides personal attendance, medical, enrolled-course, marks and timetable tabs. The profile picture field is stored as a path/URL; image upload and image rendering are not included. **Important:** `GradeCalculator` thresholds are an implementation template and have not been verified against the official UGC Circular 12-2024 grade table. Confirm the official grade bands before academic use. A complete CGPA/transcript UI and full integrated runtime acceptance testing remain to be verified.
 
@@ -69,41 +69,19 @@ The application is primarily MySQL-backed for marks, courses, materials and enro
 
 ## Source layout
 
-```
-FAMS/
-├── pom.xml
-├── src/main/java/fams/
-│   ├── Main.java
-│   ├── TG_2024_2133/   Users & Admin        (UserManagement, AdminManagement)
-│   ├── TG_2024_2138/   Courses & Academic   (CourseManagement, AcademicManagement)
-│   ├── TG_2024_2113/   Marks & GPA          (MarksManagement, GPAManagement)
-│   └── TG_2024_2108/   Attendance, Medical, Notices, Timetable
-│                       (AttendanceManagement, MedicalManagement, NoticeManagement, TimetableManagement)
-├── src/main/resources/
-│   ├── database.properties          DB url/user/password (env vars FAMS_DB_* override)
-│   └── sql/                         MySQL schema + sample data
-├── src/test/java/fams/TG_2024_2113/ AcademicResultEngineTest
-├── docs/                            feature notes and audit documents
-└── uploads/avatars/                 profile pictures (runtime)
-```
+`src/com/fams/` is the shared package tree:
+- `model/` — domain objects and role types
+- `database/` — JDBC connection, DAOs, initialization/schema-related code
+- `service/` — validation and application services
+- `gui/` — Swing login, dashboard and module screens
+- `exception/` — application exceptions
 
-Each member package contains the `*Management` classes named above (business logic / services) plus that
-member's DAOs, models and Swing panels. Shared infrastructure that every module depends on lives in
-`TG_2024_2133`: `DBConnection`, `DatabaseInitializer`, the exception classes, the `User` hierarchy and `Role`,
-`Theme`, `LoginFrame` and `MainFrame`.
+Prepare an individual contribution page for each actual group member, describing only work they personally completed and can demonstrate.
 
-| Package | Management classes | Other classes |
-|---|---|---|
-| `TG_2024_2133` | `UserManagement` (login, session, role checks), `AdminManagement` (user CRUD) | `User`, `Role`, `*User`, `UserDAO`, `LoginFrame`, `MainFrame`, `ProfilePanel`, `StudentProfilePanel`, `StudentPortalPanel`, `UserManagementPanel`, `DashboardHomePanel`, `Theme`, `DBConnection`, `DatabaseInitializer`, exceptions |
-| `TG_2024_2138` | `CourseManagement` (courses, materials), `AcademicManagement` (enrolment) | `CourseManagementPanel`, `CourseListPanel` |
-| `TG_2024_2113` | `MarksManagement`, `GPAManagement` (grade bands, SGPA) | `AcademicResultEngine`, `ResultsAccessPolicy`, `MarksDAO`, `AcademicResultsDAO`, `GradeResult`, `ComponentType`, `MarksManagementPanel` |
-| `TG_2024_2108` | `AttendanceManagement`, `MedicalManagement`, `NoticeManagement`, `TimetableManagement` | DAOs, models, panels, `EmailQueueWorker` |
-
-Prepare an individual contribution page for each actual group member, describing only work they personally completed and can demonstrate (see `docs/GROUP_CONTRIBUTIONS.md`).
 
 ## Marks & Exam Eligibility Upgrade
 
-For the upgraded PDF-aligned marks and eligibility module, follow `MARKS_ELIGIBILITY_V2_GUIDE.md` and import `marks_eligibility_v2.sql` **after** `src/main/resources/sql/FAMS_complete_database_setup_FIXED_v2.sql`. The migration seeds the ICT101-ICT103 sample marks and the S001-S003 example students. Do not skip the migration: the new DAO and student-approved-results query use the `academic_*` tables it creates.
+For the upgraded PDF-aligned marks and eligibility module, follow `MARKS_ELIGIBILITY_V2_GUIDE.md` and import `marks_eligibility_v2.sql` **after** `database_schema.sql`. The migration seeds the ICT101-ICT103 sample marks and the S001-S003 example students. Do not skip the migration: the new DAO and student-approved-results query use the `academic_*` tables it creates.
 
 
 ## Java version requirement (corrected)
